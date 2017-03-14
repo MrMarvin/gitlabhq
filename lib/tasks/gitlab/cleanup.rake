@@ -116,4 +116,36 @@ namespace :gitlab do
       end
     end
   end
+
+  desc "GitLab | Cleanup | Removes runners that are offline for a specific time"
+  task remove_offline_ci_runners: :environment  do
+    warn_user_is_not_gitlab
+    remove_flag = ENV['REMOVE']
+    older_hours = (ENV['OLDER_THAN'] || 1).to_i.hours.ago
+    name_filter = ENV['NAME']
+
+    runners = Ci::Runner.all.select do |r|
+      r.status == :offline and
+      r.contacted_at < older_hours
+    end
+    if name_filter
+      runners = runners.select do |r|
+        r.name == name_filter
+      end
+    end
+
+    runners.each do |r|
+      print "#{r.display_name} last contact was #{r.contacted_at}".color(:yellow)
+      if remove_flag
+        #r.delete
+        puts " [REMOVED]".color(:red)
+      else
+        puts " [#{r.status}]".color(:green)
+      end
+    end
+
+    unless remove_flag
+      puts "To remove these runners run this command with REMOVE=true".color(:yellow)
+    end
+  end
 end
